@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MD.Cli/MD.Cli.csproj" />
+    <Project Path="src/MD.Core/MD.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MD.Tests/MD.Tests.csproj" />
+  </Folder>
+</Solution>

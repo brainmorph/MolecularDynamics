@@ -1,0 +1,7 @@
+bin/
+obj/
+out/
+*.traj
+*.log
+.vs/
+.vscode/

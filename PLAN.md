@@ -268,6 +268,11 @@ Initial plan:
 | 2026-11-05 | Run control: command-line program reading a JSON settings file | Repeatable runs; settings recorded with each result |
 | 2026-11-05 | Godot 4.7 stable, Mono build, installed locally | User choice; no download needed |
 | 2026-11-05 | Core writes KE, PE, and total energy per frame; Godot displays them and never recomputes physics | Keeps energy correctness in the core, consistent with the separation rules |
+| 2026-11-05 | Reference force code sums over all periodic images within the cutoff (not minimum image) | The 8-atom box (3.36 × 1.68 × 1.68 σ at ρ = 0.8442) is smaller than 2 × 2.5 σ, where minimum image gives wrong forces. Tested against a direct FCC lattice sum and against minimum image on a large box |
+| 2026-11-05 | Trajectory format version 1 specified in `docs/trajectory-format.md` | Little-endian, f64 positions, per-frame energies, image counts, bond list (empty for now), settings JSON in header |
+| 2026-11-05 | Projects target .NET 8 (`net8.0`) | LTS and installed locally; .NET 10 SDK builds it too |
+| 2026-11-05 | Temperature uses 3N − 3 degrees of freedom; pressure from the virial, no tail correction | Net momentum is removed and conserved; potential is truncated and shifted |
+| 2026-11-05 | Observed: energy-shifted cutoff causes small random energy kicks (force jumps at r_c). 8 atoms, dt 0.005, 100 τ: max \|E − E0\| ≈ 3 × 10⁻⁴ of \|E0\|, no systematic drift. Integrator itself verified second order on a bound dimer | A force-shifted potential would remove the kicks if tighter conservation is needed; not changed, since the energy shift is a decided item |
 
 ---
 
