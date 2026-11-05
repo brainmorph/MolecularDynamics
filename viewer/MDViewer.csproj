@@ -1,0 +1,13 @@
+<Project Sdk="Godot.NET.Sdk/4.7.0">
+  <!--
+    Godot viewer for MD trajectories. Separate from the core solution on purpose:
+    it must not reference MD.Core or MD.Cli. Its only input is a trajectory file
+    (docs/trajectory-format.md).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MDViewer</RootNamespace>
+  </PropertyGroup>
+</Project>

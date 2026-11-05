@@ -201,6 +201,21 @@ Initial plan:
 
 ## Milestones
 
+### Phase order
+
+**Status: Proposed (2026-11-05).** Order follows the priorities: verify correctness first, then add realism, then speed.
+
+| Phase | Content | Status |
+|---|---|---|
+| 1 | Milestone 1a: LJ-only engine validation (NVE, velocity Verlet, periodic image-sum forces, trajectory format v1, CLI, tests) | Done (2026-11-05) |
+| 2 | Godot viewer: reads trajectory format v1, free-fly camera, Esc menu, F1 diagnostics (Section 11) | Built (2026-11-05); needs hands-on check of controls |
+| 3 | Cell list + Verlet neighbour list, tested against the O(N²) reference; larger LJ runs | Not started |
+| 4 | Analysis: g(r) and mean squared displacement, checked against published LJ data | Not started |
+| 5 | NVT thermostat (then NPT), after NVE is verified | Not started |
+| 6 | Electrostatics and rigid water (Milestone 1b, SPC/E), needs the Coulomb method decision | Not started |
+
+Open items that can change the order: the cutoff treatment (energy-shifted, as decided, or force-shifted), and the LAMMPS/GROMACS reference comparison (Section 8), which needs software that is not installed.
+
 ### Milestone 1: Free atoms, Lennard-Jones, velocity Verlet
 
 **Stated goal:** Simulate H and O atoms floating freely, interacting through Lennard-Jones forces, integrated with velocity Verlet, and observe a water molecule forming.
@@ -273,6 +288,9 @@ Initial plan:
 | 2026-11-05 | Projects target .NET 8 (`net8.0`) | LTS and installed locally; .NET 10 SDK builds it too |
 | 2026-11-05 | Temperature uses 3N − 3 degrees of freedom; pressure from the virial, no tail correction | Net momentum is removed and conserved; potential is truncated and shifted |
 | 2026-11-05 | Observed: energy-shifted cutoff causes small random energy kicks (force jumps at r_c). 8 atoms, dt 0.005, 100 τ: max \|E − E0\| ≈ 3 × 10⁻⁴ of \|E0\|, no systematic drift. Integrator itself verified second order on a bound dimer | A force-shifted potential would remove the kicks if tighter conservation is needed; not changed, since the energy shift is a decided item |
+| 2026-11-05 | Viewer renders atoms as one instanced MultiMesh of spheres (radius 0.3σ, 1 unit = 1σ) plus a box outline | Resolves the Section 11 rendering question for now; one draw call for all atoms |
+| 2026-11-05 | Viewer plays 30 trajectory frames/s, stops on the last frame, pauses while the Esc menu is open; positions interpolated (unwrapped) for display, energies shown from the current frame | Display-only choices; not specified by the user, open to change |
+| 2026-11-05 | Core tests compile the viewer's trajectory reader source to check it against the core writer | Catches format disagreements; the viewer still never references core assemblies |
 
 ---
 

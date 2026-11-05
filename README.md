@@ -15,6 +15,7 @@ Requires the .NET SDK (projects target `net8.0`). No third-party packages.
 | `tests/MD.Tests` | Validation tests with a small in-repo test runner. |
 | `docs/trajectory-format.md` | Binary trajectory format spec (the contract with the viewer). |
 | `examples/` | Example settings files. |
+| `viewer/` | Godot 4.7 (C#) trajectory viewer. Separate project; reads only the trajectory file. |
 
 ## Usage
 
@@ -33,6 +34,31 @@ dotnet run -c Release --project src/MD.Cli -- dump out/argon-8.traj
 ```
 
 Paths in a settings file are relative to that file. Unknown settings keys are rejected.
+
+## Viewer
+
+```bash
+GODOT=/home/purple-eden/Desktop/Godot_v4.7-stable_mono_linux_x86_64/Godot_v4.7-stable_mono_linux.x86_64
+(cd viewer && dotnet build)
+$GODOT --path viewer                          # plays out/argon-8.traj
+$GODOT --path viewer -- /path/to/other.traj   # any trajectory
+
+scripts/view-latest.sh            # builds the viewer and opens the newest .traj under out/
+scripts/view-latest.sh some/dir   # newest .traj under some/dir (set GODOT to override the binary path)
+```
+
+| Key | Action |
+|---|---|
+| W / A / S / D | move forward / left / back / right (relative to view) |
+| Q / E | move down / up |
+| Shift | move faster |
+| Mouse | look around |
+| Esc | open/close menu (Restart, Quit); playback and camera pause while it is open |
+| F1 | show/hide diagnostics: FPS, frame time, atoms on screen, KE/PE/E from the file, drift E − E0 |
+
+Display scale is 1 Godot unit = 1σ, atoms drawn with radius 0.3σ. Playback runs at 30 trajectory
+frames per second and stops on the last frame. Positions between frames are interpolated for
+display only; energies always show the current frame's stored values.
 
 ## Settings
 
@@ -60,5 +86,6 @@ Paths in a settings file are relative to that file. Unknown settings keys are re
 - Velocity Verlet energy error scales as dt² (bound dimer).
 - NVE energy conservation (8 and 32 atoms), momentum conservation, time reversibility, determinism.
 - Unit conversions against known argon values; trajectory round trip and byte layout.
+- The viewer's own reader (compiled into the tests) reads core output bit-exactly.
 
 Not yet done: comparison against an established code (LAMMPS/GROMACS).

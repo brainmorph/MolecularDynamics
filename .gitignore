@@ -5,3 +5,4 @@ out/
 *.log
 .vs/
 .vscode/
+.godot/
