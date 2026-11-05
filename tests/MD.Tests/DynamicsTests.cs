@@ -45,6 +45,17 @@ public static class DynamicsTests
         CheckEnergyConservation(Helpers.Fcc(2, 1, 1), steps: 20_000, maxRelativeDeviation: 1e-3);
     }
 
+    /// <summary>
+    /// 8 atoms at 1/125 of the liquid density (box sides 5x longer, larger than 2·r_c): a dilute gas.
+    /// E0 is almost all kinetic and small, so the relative tolerance is looser; the absolute deviation
+    /// (≈ 0.01 ε, from close collisions) is similar to the liquid's.
+    /// </summary>
+    [Test]
+    public static void LjGas8_EnergyConserved()
+    {
+        CheckEnergyConservation(Helpers.Fcc(2, 1, 1, density: 0.8442 / 125), steps: 20_000, maxRelativeDeviation: 3e-3);
+    }
+
     [Test]
     public static void LjFluid32_EnergyConserved()
     {

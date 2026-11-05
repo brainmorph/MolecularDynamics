@@ -291,6 +291,7 @@ Open items that can change the order: the cutoff treatment (energy-shifted, as d
 | 2026-11-05 | Viewer renders atoms as one instanced MultiMesh of spheres (radius 0.3σ, 1 unit = 1σ) plus a box outline | Resolves the Section 11 rendering question for now; one draw call for all atoms |
 | 2026-11-05 | Viewer plays 30 trajectory frames/s, stops on the last frame, pauses while the Esc menu is open; positions interpolated (unwrapped) for display, energies shown from the current frame | Display-only choices; not specified by the user, open to change |
 | 2026-11-05 | Core tests compile the viewer's trajectory reader source to check it against the core writer | Catches format disagreements; the viewer still never references core assemblies |
+| 2026-11-05 | Default 8-atom example is a dilute gas: density 0.0067536 (1/125 of 0.8442), box sides 5× longer (16.8 × 8.4 × 8.4 σ). Dense-liquid setup kept as `examples/argon-8-liquid.json` | User request: the liquid box was too small to watch. The gas box exceeds 2 × cutoff. Energy check: max \|E − E0\| ≈ 0.011 ε (0.15 % of the small, mostly kinetic E0) at dt 0.005, shrinking with dt |
 
 ---
 

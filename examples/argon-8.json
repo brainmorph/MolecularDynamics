@@ -1,7 +1,9 @@
 {
   // First-phase run: 8 atoms (2x1x1 FCC cells), argon-like LJ, NVE. Reduced LJ units.
+  // Dilute gas: density is 1/125 of the liquid (examples/argon-8-liquid.json), so every box side
+  // is 5x longer: 16.8 x 8.4 x 8.4 sigma.
   "cells": [2, 1, 1],
-  "density": 0.8442,
+  "density": 0.0067536,
   "temperature": 0.722,
   "timestep": 0.005,
   "steps": 20000,

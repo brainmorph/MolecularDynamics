@@ -208,7 +208,12 @@ public partial class Main : Node3D
     {
         foreach (string arg in OS.GetCmdlineUserArgs())
         {
-            if (!arg.StartsWith("--", StringComparison.Ordinal)) return Path.GetFullPath(arg);
+            if (arg.StartsWith("--", StringComparison.Ordinal)) continue;
+            if (Path.IsPathRooted(arg)) return arg;
+            // Godot switches the working directory to the project folder, so resolve relative
+            // paths against the shell's directory (PWD), where the user typed them.
+            string? launchDir = System.Environment.GetEnvironmentVariable("PWD");
+            return Path.GetFullPath(arg, string.IsNullOrEmpty(launchDir) ? System.Environment.CurrentDirectory : launchDir);
         }
         string projectDir = ProjectSettings.GlobalizePath("res://");
         return Path.GetFullPath(Path.Combine(projectDir, "..", "out", "argon-8.traj"));
@@ -279,7 +284,16 @@ public partial class Main : Node3D
         sun.RotationDegrees = new Vector3(-50, -30, 0);
         AddChild(sun);
 
-        _camera = new FlyCamera { Near = 0.02f, Far = 500f, Current = true };
+        // 60° vertical (≈ 87° horizontal at 16:10): close to a natural view on a desktop monitor.
+        // Godot's default of 75° looks stretched at the edges.
+        _camera = new FlyCamera
+        {
+            Fov = 60f,
+            KeepAspect = Camera3D.KeepAspectEnum.Height,
+            Near = 0.02f,
+            Far = 500f,
+            Current = true,
+        };
         AddChild(_camera);
 
         // Instanced spheres: one draw call for all atoms (rendering approach is still Open in the plan).

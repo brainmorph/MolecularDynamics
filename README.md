@@ -27,7 +27,8 @@ dotnet run -c Release --project tests/MD.Tests
 dotnet run -c Release --project tests/MD.Tests -- Energy
 
 # Run a simulation: writes out/argon-8.traj and out/argon-8.log
-dotnet run -c Release --project src/MD.Cli -- run examples/argon-8.json
+dotnet run -c Release --project src/MD.Cli -- run examples/argon-8.json         # dilute gas, box 16.8 x 8.4 x 8.4
+dotnet run -c Release --project src/MD.Cli -- run examples/argon-8-liquid.json  # dense liquid, box 3.4 x 1.7 x 1.7
 
 # Inspect a trajectory
 dotnet run -c Release --project src/MD.Cli -- dump out/argon-8.traj
@@ -56,7 +57,7 @@ scripts/view-latest.sh some/dir   # newest .traj under some/dir (set GODOT to ov
 | Esc | open/close menu (Restart, Quit); playback and camera pause while it is open |
 | F1 | show/hide diagnostics: FPS, frame time, atoms on screen, KE/PE/E from the file, drift E − E0 |
 
-Display scale is 1 Godot unit = 1σ, atoms drawn with radius 0.3σ. Playback runs at 30 trajectory
+Display scale is 1 Godot unit = 1σ, atoms drawn with radius 0.3σ. Camera field of view is 60° vertical. Playback runs at 30 trajectory
 frames per second and stops on the last frame. Positions between frames are interpolated for
 display only; energies always show the current frame's stored values.
 
