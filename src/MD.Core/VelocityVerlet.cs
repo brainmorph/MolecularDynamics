@@ -11,14 +11,14 @@ namespace MD.Core;
 /// </summary>
 public sealed class VelocityVerlet
 {
-    public VelocityVerlet(ForceCalculator forces, double timestep)
+    public VelocityVerlet(IForceField forces, double timestep)
     {
         Forces = forces ?? throw new ArgumentNullException(nameof(forces));
         if (!(timestep > 0) || double.IsInfinity(timestep)) throw new ArgumentOutOfRangeException(nameof(timestep));
         Timestep = timestep;
     }
 
-    public ForceCalculator Forces { get; }
+    public IForceField Forces { get; }
     public double Timestep { get; }
 
     /// <summary>Computes forces for the current positions. Call once before the first <see cref="Step"/>.</summary>

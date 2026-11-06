@@ -39,15 +39,55 @@ public sealed record AtomType
     public bool HasLj => LjEpsilon > 0;
 }
 
-/// <summary>Bond between atoms <see cref="I"/> and <see cref="J"/> (indices local to a template, or global in a topology).</summary>
-public readonly record struct BondTerm(int I, int J);
+/// <summary>
+/// Harmonic bond U = ½·K·(r − R0)², with K in kJ/(mol·Å²) and R0 in Å. Note the ½: a parameter
+/// quoted without it (U = K(r − R0)²) must be doubled.
+/// </summary>
+public sealed record HarmonicBond
+{
+    public HarmonicBond(double forceConstant, double length)
+    {
+        if (!(forceConstant > 0) || double.IsInfinity(forceConstant)) throw new ArgumentOutOfRangeException(nameof(forceConstant));
+        if (!(length > 0) || double.IsInfinity(length)) throw new ArgumentOutOfRangeException(nameof(length));
+        ForceConstant = forceConstant;
+        Length = length;
+    }
 
-/// <summary>Angle I–J–K with <see cref="J"/> at the vertex.</summary>
-public readonly record struct AngleTerm(int I, int J, int K);
+    public double ForceConstant { get; }
+    public double Length { get; }
+}
+
+/// <summary>
+/// Harmonic angle U = ½·K·(θ − θ0)², with K in kJ/(mol·rad²) and θ0 in radians. Same ½ convention
+/// as <see cref="HarmonicBond"/>.
+/// </summary>
+public sealed record HarmonicAngle
+{
+    public HarmonicAngle(double forceConstant, double angle)
+    {
+        if (!(forceConstant > 0) || double.IsInfinity(forceConstant)) throw new ArgumentOutOfRangeException(nameof(forceConstant));
+        if (!(angle > 0 && angle < Math.PI)) throw new ArgumentOutOfRangeException(nameof(angle), "Equilibrium angle must be strictly between 0 and π.");
+        ForceConstant = forceConstant;
+        Angle = angle;
+    }
+
+    public double ForceConstant { get; }
+    public double Angle { get; }
+}
+
+/// <summary>
+/// Bond between atoms <see cref="I"/> and <see cref="J"/> (indices local to a template, or global in a
+/// topology). <see cref="Parameters"/> may be null for topology-only use; <see cref="BondedForces"/>
+/// refuses a bond without parameters.
+/// </summary>
+public readonly record struct BondTerm(int I, int J, HarmonicBond? Parameters = null);
+
+/// <summary>Angle I–J–K with <see cref="J"/> at the vertex. Parameters as for <see cref="BondTerm"/>.</summary>
+public readonly record struct AngleTerm(int I, int J, int K, HarmonicAngle? Parameters = null);
 
 /// <summary>
 /// A molecule definition: its atom types, bonds and angles, with atom indices local to the molecule.
-/// Bonded parameters (force constants, equilibrium values) are added in W3.
+/// Bonded parameters are attached to each <see cref="BondTerm"/> and <see cref="AngleTerm"/>.
 /// </summary>
 public sealed class MoleculeTemplate
 {
@@ -136,8 +176,8 @@ public sealed class Topology
             _types.Add(t);
             _moleculeOf.Add(molecule);
         }
-        foreach (var b in template.Bonds) _bonds.Add(new BondTerm(b.I + offset, b.J + offset));
-        foreach (var a in template.Angles) _angles.Add(new AngleTerm(a.I + offset, a.J + offset, a.K + offset));
+        foreach (var b in template.Bonds) _bonds.Add(b with { I = b.I + offset, J = b.J + offset });
+        foreach (var a in template.Angles) _angles.Add(a with { I = a.I + offset, J = a.J + offset, K = a.K + offset });
         return molecule;
     }
 

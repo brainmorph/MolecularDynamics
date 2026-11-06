@@ -17,7 +17,7 @@ public readonly record struct ForceResult(double PotentialEnergy, double Virial)
 /// It is deliberately simple. Faster methods (minimum image, cell lists, neighbour lists) must be
 /// tested against it.
 /// </summary>
-public sealed class ForceCalculator
+public sealed class ForceCalculator : IForceField
 {
     public ForceCalculator(LennardJones potential)
     {

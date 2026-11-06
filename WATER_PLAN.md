@@ -4,7 +4,7 @@ This file plans the move from the LJ-only argon engine to a realistic liquid wat
 It follows the conventions in [PLAN.md](PLAN.md): each decision has a status (**Decided**,
 **Proposed**, or **Open**), and changes are dated.
 
-**Status: Decisions D1–D5 answered (2026-11-06). W0, W1 and W2 done (2026-11-06).** Next: W3 (bonded terms).
+**Status: Decisions D1–D5 answered (2026-11-06). W0–W3 done (2026-11-06).** Next: W4 (SPC/Fw parameters, which need the paper).
 
 ---
 
@@ -125,6 +125,29 @@ Each milestone ends with tests that pass. Nothing moves on until the tests for t
   - An isolated molecule vibrates with the period predicted from its force constants (normal-mode check).
   - Energy is conserved in NVE at the chosen timestep (the drift criterion from PLAN.md Section 8).
   - Total momentum and angular momentum of an isolated molecule are conserved.
+
+**Done (2026-11-06).** What was built:
+- `HarmonicBond` (U = ½K(r − r0)²) and `HarmonicAngle` (U = ½K(θ − θ0)²), attached to `BondTerm` and
+  `AngleTerm`. **Note the ½ convention:** if the SPC/Fw paper writes U = K(r − r0)², its K must be doubled.
+- `BondedForces` (`src/MD.Core/BondedForces.cs`): bond and angle forces, energy and virial (angle virial is
+  zero). Refuses bonds or angles without parameters, and a linear angle.
+- `IForceField` and `CompositeForceField` (`src/MD.Core/IForceField.cs`). `ForceCalculator` implements
+  `IForceField`, and `VelocityVerlet` now accepts any `IForceField`. The integration steps are unchanged.
+- Tests (`tests/MD.Tests/BondedTests.cs`, 8 new, 61/61 pass), with placeholder parameters
+  (K_b = 4000 kJ/(mol·Å²), r0 = 1 Å, K_θ = 300 kJ/(mol·rad²), θ0 = 109.47°; not SPC/Fw):
+  - Forces equal −∇E (central differences), molecules straddling the box edge; forces sum to zero.
+  - Normal modes: the mass-weighted Hessian has six zero modes and three eigenvalues equal to the
+    Wilson GF prediction for bent XY₂ (checked against Herzberg's formulas) to 1e-6.
+  - The antisymmetric stretch oscillates with the predicted period (9.545 fs); measured error −4.5e-5,
+    which is the Verlet shift (ωΔt)²/24 at Δt = 0.05 fs.
+  - NVE, 8 molecules at 300 K, 5 ps: halving Δt from 0.5 to 0.25 fs reduces max |E − E0| by 4.06
+    (second order); at 0.5 fs max |E − E0| = 0.84 % of KE0 (criterion < 2 %); drift 2e-6 of KE0.
+  - Time reversal over 2000 steps recovers positions to < 1e-8 Å.
+  - Isolated rotating molecule: momentum and angular momentum conserved over 20000 steps.
+- **Timestep is provisional.** 0.5 fs passes with placeholder force constants. The final value is set
+  by repeating the energy test with the SPC/Fw parameters and intermolecular forces in W4.
+- Intermolecular forces are not in these tests (the molecules are far apart): type-aware LJ with
+  exclusions, and an `IForceField` wrapper for `Ewald`, are W4 work.
 
 ### W4: SPC/Fw water
 - All parameters (charges, LJ on O, equilibrium bond length and angle, force constants) come from
