@@ -4,7 +4,7 @@ This file plans the move from the LJ-only argon engine to a realistic liquid wat
 It follows the conventions in [PLAN.md](PLAN.md): each decision has a status (**Decided**,
 **Proposed**, or **Open**), and changes are dated.
 
-**Status: Decisions D1–D5 answered (2026-11-06). W0 and W1 done (2026-11-06).** Next: W2 (Ewald).
+**Status: Decisions D1–D5 answered (2026-11-06). W0, W1 and W2 done (2026-11-06).** Next: W3 (bonded terms).
 
 ---
 
@@ -96,6 +96,27 @@ Each milestone ends with tests that pass. Nothing moves on until the tests for t
   - Forces equal the negative gradient of energy (finite differences), as for the LJ code.
   - Energy is independent of the Ewald splitting parameter, within tolerance.
 
+**Done (2026-11-06).** What was built:
+- `Ewald` (`src/MD.Core/Ewald.cs`): real space over all images within the cutoff (correct for
+  small boxes, like `ForceCalculator`), reciprocal sum over |k| ≤ k_c, self term, exclusion
+  correction (−k q_i q_j erf(αr)/r for each intramolecular pair, minimum image), and the
+  neutralising-background term −kπQ²/(2Vα²). Conducting (tinfoil) boundary conditions.
+  `Ewald.ForAccuracy(r_c, δ, k)` sets α = √(−ln δ)/r_c and k_c = 2α√(−ln δ).
+  The virial is not computed yet (needed for the barostat, W5).
+- `SpecialFunctions.Erf/Erfc`: .NET has no error function. Series below 2, continued fraction from 2.
+  Measured against the C library over [0, 6]: absolute error ≤ 1e-15, erfc relative ≤ 4e-15 from 2.
+- `Topology.ExcludedPairs()`, `Vec3.Cross`.
+- Tests (`tests/MD.Tests/EwaldTests.cs`, 8 new, 53/53 pass):
+  - NaCl, 1 and 2³ conventional cells: E = −M·N_pairs/d to 1e-11 relative, M = 1.7475645946331821; lattice forces vanish.
+  - +1/−1 pair in a 30 Å cube at r = 0.5, 1, 2: energy −k/r − 2πk r²/(3V) and the matching force, to 1e-5
+    (the dipole term is up to 3e-4, so it is resolved). This is the "Ewald correction" for the two-ion test.
+  - One molecule alone: exclusions leave only the image terms. Energy equals the dipole term to 1 %, and
+    the remainder falls as L⁻⁵ (ratio 32 between L = 30 and 60 Å, within 1 %). Without exclusions it would be ≈ −1300 kJ/mol.
+  - Forces equal −∇E by central differences, for neutral and charged systems with molecules straddling the box edge.
+  - Total energy independent of α (four values; terms change by thousands of kJ/mol, total by < 1e-9 kJ/mol), neutral and charged.
+  - Forces sum to zero.
+- The Forces = −∇E test takes about 5 s (O(N²·N_k) reference code, many energy calls).
+
 ### W3: Flexible bonded terms (D3)
 - Harmonic bond stretch for O–H and harmonic angle bend for H–O–H.
 - Timestep about 0.5 fs, since O–H vibrations are fast. The exact value is set by the energy-drift test.
@@ -171,6 +192,6 @@ No literature values have been checked yet. Before any water result is compared 
 
 - Wu, Tepper & Voth (2006), *Flexible simple point-charge water model with improved liquid-state properties*, J. Chem. Phys. 124, 024503, for SPC/Fw parameters and the model's own reported liquid properties (citation from memory; verify).
 - Experimental density, RDF and diffusion data for liquid water at 298 K (for example, the Soper neutron-diffraction work, and the standard diffusion measurements).
-- The Madelung constant for NaCl, for the Ewald test in W2.
+- The Madelung constant for NaCl, for the Ewald test in W2. **Recorded (2026-11-06):** M = 1.7475645946331821 (nearest-neighbour distance as the length), from the CARMA numbers page, https://carmamaths.org/resources/numbers/page/main.html; Wikipedia's Madelung constant table gives ±1.747565 for the same convention.
 
 Record each source here with the value used.

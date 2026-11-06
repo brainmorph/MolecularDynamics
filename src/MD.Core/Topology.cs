@@ -161,6 +161,19 @@ public sealed class Topology
         return q;
     }
 
+    /// <summary>Every excluded pair (i &lt; j) once: the atom pairs within each molecule.</summary>
+    public IEnumerable<(int I, int J)> ExcludedPairs()
+    {
+        for (int m = 0; m < _moleculeStart.Count; m++)
+        {
+            int first = _moleculeStart[m];
+            int end = first + _moleculeTemplate[m].Atoms.Count;
+            for (int i = first; i < end; i++)
+                for (int j = i + 1; j < end; j++)
+                    yield return (i, j);
+        }
+    }
+
     private double[] Map(Func<AtomType, double> f)
     {
         var v = new double[_types.Count];
