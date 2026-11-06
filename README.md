@@ -89,4 +89,25 @@ display only; energies always show the current frame's stored values.
 - Unit conversions against known argon values; trajectory round trip and byte layout.
 - The viewer's own reader (compiled into the tests) reads core output bit-exactly.
 
-Not yet done: comparison against an established code (LAMMPS/GROMACS).
+## Comparison with published data
+
+`validation/LjReference` is a separate program (not part of the core solution). It runs the core
+engine and compares the results with published data. LAMMPS and GROMACS are not installed, so
+those comparisons are still open.
+
+```bash
+dotnet run -c Release --project validation/LjReference            # Johnson et al. (1993) LJ table, 3 state points
+dotnet run -c Release --project validation/LjReference -- argon   # LJ saturated liquid density vs real argon (NIST)
+```
+
+- **Johnson, Zollweg & Gubbins (1993), Table 2.** At ρ* = 0.80 and 0.90 and T* = 0.70 and 0.75 (500 atoms, r_c = 4σ),
+  the raw pressure and energy agree with the paper's cut-shifted values within statistical error. The table is
+  interpolated to each run's measured temperature. Energy drift over 100,000 NVE steps is below 0.001%.
+- **Real argon (NIST WebBook, saturation at 86.485 K).** The LJ pressure equals argon's vapour pressure at
+  ρ* ≈ 0.8334, which matches argon's saturated liquid density (1.4004 g/cm³). The statistical uncertainty from
+  the pressure error is about ±0.0002 in ρ*. This is a model comparison: LJ is an approximation for argon, so a
+  match does not show the LJ fluid is exact.
+
+Limits: the paper used 864 atoms and this check uses 500. The tail corrections assume g(r) = 1 beyond r_c.
+The argon run holds temperature during production, which is an NVT average. Plain NVE gave a shifted answer,
+because the measured temperature drifted at low density.
