@@ -14,8 +14,17 @@ public sealed class RunSettings
     /// <summary>FCC cells along x, y, z. Atom count = 4·x·y·z. [2,1,1] gives 8 atoms.</summary>
     public int[] Cells { get; set; } = { 2, 1, 1 };
 
-    /// <summary>Number density ρσ³.</summary>
+    /// <summary>
+    /// Number density ρσ³. Without <see cref="Box"/> this is the system's density. With <see cref="Box"/>
+    /// it only sets the lattice spacing (a = (4/ρ)^(1/3)); the system's density is then atoms / box volume.
+    /// </summary>
     public double Density { get; set; } = 0.8442;
+
+    /// <summary>
+    /// Optional box lengths (x, y, z) in σ. When set, the lattice is centred in this box, leaving the rest
+    /// empty. Use it to start a compact cluster in a large box. Omit it to fill the box at Density.
+    /// </summary>
+    public double[]? Box { get; set; }
 
     /// <summary>Starting temperature (k_B T / ε).</summary>
     public double Temperature { get; set; } = 0.722;
@@ -72,6 +81,8 @@ public sealed class RunSettings
         else if ((long)Cells[0] * Cells[1] * Cells[2] > 1_000_000)
             errors.Add("cells gives too many atoms");
         if (!IsPositive(Density)) errors.Add("density must be positive");
+        if (Box is not null && (Box.Length != 3 || Array.Exists(Box, x => !IsPositive(x))))
+            errors.Add("box must be three positive lengths");
         if (!(Temperature >= 0) || double.IsInfinity(Temperature)) errors.Add("temperature must be zero or positive");
         if (!IsPositive(Timestep)) errors.Add("timestep must be positive");
         if (Steps < 0) errors.Add("steps must be zero or positive");

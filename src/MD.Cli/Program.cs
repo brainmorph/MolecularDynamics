@@ -53,7 +53,8 @@ public static class Program
         Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
 
         // Build the system.
-        var (box, positions) = Lattice.Fcc(settings.Cells[0], settings.Cells[1], settings.Cells[2], settings.Density);
+        Vec3? boxOverride = settings.Box is null ? null : new Vec3(settings.Box[0], settings.Box[1], settings.Box[2]);
+        var (box, positions) = Lattice.Fcc(settings.Cells[0], settings.Cells[1], settings.Cells[2], settings.Density, boxOverride);
         int n = positions.Length;
         var masses = Enumerable.Repeat(1.0, n).ToArray();
         var elements = Enumerable.Range(0, n).Select(i => settings.Elements[i % settings.Elements.Length]).ToArray();
@@ -71,12 +72,14 @@ public static class Program
         }
 
         Log("# LJ molecular dynamics, NVE, velocity Verlet. Reduced LJ units (sigma, epsilon, m, k_B = 1).");
-        Log($"# atoms {n}  cells {string.Join("x", settings.Cells)}  density {settings.Density}  " +
+        double actualDensity = n / box.Volume;
+        string densityNote = settings.Box is null ? "" : $" (lattice spacing from density {settings.Density})";
+        Log($"# atoms {n}  cells {string.Join("x", settings.Cells)}  density {actualDensity:G6}{densityNote}  " +
             $"box {box.Lengths.X:F6} x {box.Lengths.Y:F6} x {box.Lengths.Z:F6}");
         Log($"# timestep {settings.Timestep}  steps {settings.Steps}  cutoff {settings.Cutoff} (energy-shifted)  seed {settings.Seed}");
         Log($"# argon scale: dt = {ArgonUnits.TimeToFemtoseconds(settings.Timestep):F3} fs, " +
             $"T0 = {ArgonUnits.TemperatureToKelvin(settings.Temperature):F2} K, " +
-            $"density = {ArgonUnits.DensityToGramsPerCubicCentimetre(settings.Density):F4} g/cm3");
+            $"density = {ArgonUnits.DensityToGramsPerCubicCentimetre(actualDensity):F4} g/cm3");
         if (box.MinLength < 2 * settings.Cutoff)
         {
             Log($"# note: box is smaller than 2 x cutoff; forces sum over all periodic images within the cutoff.");

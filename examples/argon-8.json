@@ -1,10 +1,13 @@
 {
   // First-phase run: 8 atoms (2x1x1 FCC cells), argon-like LJ, NVE. Reduced LJ units.
-  // Dilute gas: density is 1/125 of the liquid (examples/argon-8-liquid.json), so every box side
-  // is 5x longer: 16.8 x 8.4 x 8.4 sigma.
+  // Cold, compact 8-atom FCC cluster at the Lennard-Jones minimum spacing (density 1.0 gives nearest
+  // neighbours at 2^(1/6) sigma), centred in a large empty box (168 x 84 x 84 sigma) so it never meets
+  // its periodic images. Starts close to equilibrium. Temperature is low, so the atoms vibrate about
+  // their lattice sites rather than evaporate. Reduced LJ units.
   "cells": [2, 1, 1],
-  "density": 0.0067536,
-  "temperature": 0.722,
+  "density": 1.0,
+  "box": [168, 84, 84],
+  "temperature": 0.05,
   "timestep": 0.005,
   "steps": 20000,
   "seed": 12345,
