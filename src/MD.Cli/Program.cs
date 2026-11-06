@@ -53,8 +53,10 @@ public static class Program
         Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
 
         // Build the system.
-        Vec3? boxOverride = settings.Box is null ? null : new Vec3(settings.Box[0], settings.Box[1], settings.Box[2]);
-        var (box, positions) = Lattice.Fcc(settings.Cells[0], settings.Cells[1], settings.Cells[2], settings.Density, boxOverride);
+        var (box, positions) = settings.Box is null
+            ? Lattice.Fcc(settings.Cells[0], settings.Cells[1], settings.Cells[2], settings.Density)
+            : Lattice.Chain(settings.Cells[0], settings.Cells[1], settings.Cells[2], settings.Density,
+                settings.ClusterCount, settings.ClusterGap, new Vec3(settings.Box[0], settings.Box[1], settings.Box[2]));
         int n = positions.Length;
         var masses = Enumerable.Repeat(1.0, n).ToArray();
         var elements = Enumerable.Range(0, n).Select(i => settings.Elements[i % settings.Elements.Length]).ToArray();
@@ -74,7 +76,8 @@ public static class Program
         Log("# LJ molecular dynamics, NVE, velocity Verlet. Reduced LJ units (sigma, epsilon, m, k_B = 1).");
         double actualDensity = n / box.Volume;
         string densityNote = settings.Box is null ? "" : $" (lattice spacing from density {settings.Density})";
-        Log($"# atoms {n}  cells {string.Join("x", settings.Cells)}  density {actualDensity:G6}{densityNote}  " +
+        string clusterNote = settings.ClusterCount > 1 ? $" x {settings.ClusterCount} clusters, gap {settings.ClusterGap}" : "";
+        Log($"# atoms {n}  cells {string.Join("x", settings.Cells)}{clusterNote}  density {actualDensity:G6}{densityNote}  " +
             $"box {box.Lengths.X:F6} x {box.Lengths.Y:F6} x {box.Lengths.Z:F6}");
         Log($"# timestep {settings.Timestep}  steps {settings.Steps}  cutoff {settings.Cutoff} (energy-shifted)  seed {settings.Seed}");
         Log($"# argon scale: dt = {ArgonUnits.TimeToFemtoseconds(settings.Timestep):F3} fs, " +

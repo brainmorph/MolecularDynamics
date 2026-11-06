@@ -44,7 +44,7 @@ public partial class Main : Node3D
         BuildWorld();
         BuildUi();
         LoadTrajectory(ResolveTrajectoryPath());
-        Input.MouseMode = Input.MouseModeEnum.Captured;
+        // The mouse starts free. It is captured only by an explicit click in the window (see _Input).
     }
 
     // ---------------------------------------------------------------- input
@@ -91,6 +91,7 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+
         if (_trajectory is { Frames.Count: > 0 } t)
         {
             // Playback pauses while the menu is open. It stops on the last frame.

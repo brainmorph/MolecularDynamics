@@ -19,6 +19,39 @@ public static class SetupTests
     }
 
     [Test]
+    public static void Chain_PlacesBlocksInAStraightRowWithGaps()
+    {
+        double density = 1.0;
+        double a = Math.Cbrt(4 / density);
+        var box = new Vec3(100, 50, 50);
+        var (b, positions) = Lattice.Chain(2, 2, 1, density, count: 3, gap: 1.5, box);
+        Assert.Equal(48, positions.Length, "atom count for 3 blocks of 2x2x1 cells");
+        // Each block spans 2a in x, so block i occupies [startX + i(2a + gap), ... + 2a].
+        double rowLength = 3 * 2 * a + 2 * 1.5;
+        double startX = (box.X - rowLength) / 2;
+        for (int c = 0; c < 3; c++)
+        {
+            double lo = startX + c * (2 * a + 1.5), hi = lo + 2 * a;
+            int inside = 0;
+            foreach (var p in positions) if (p.X >= lo - 1e-12 && p.X <= hi + 1e-12) inside++;
+            Assert.Equal(16, inside, $"atoms in block {c}");
+        }
+        // Gap is measured between cell boundaries. The outermost atom planes sit a/2 inside each boundary,
+        // so the closest atoms across a gap are gap + a/2 apart in x.
+        int Block(Vec3 p) => (int)Math.Floor((p.X - startX) / (2 * a + 1.5));
+        double minGap = double.MaxValue;
+        for (int i = 0; i < positions.Length; i++)
+        for (int j = i + 1; j < positions.Length; j++)
+        {
+            if (Block(positions[i]) == Block(positions[j])) continue;
+            minGap = Math.Min(minGap, Math.Abs(positions[i].X - positions[j].X));
+        }
+        Assert.Close(1.5 + a / 2, minGap, 1e-12, 0, "closest atoms across a gap (x)");
+        foreach (var p in positions)
+            Assert.True(p.X >= 0 && p.X < box.X && p.Y >= 0 && p.Y < box.Y && p.Z >= 0 && p.Z < box.Z, $"site {p} inside box");
+    }
+
+    [Test]
     public static void Fcc_NearestNeighbourDistance()
     {
         // Nearest-neighbour distance in FCC is a/√2.

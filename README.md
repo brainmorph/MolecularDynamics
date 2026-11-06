@@ -27,7 +27,7 @@ dotnet run -c Release --project tests/MD.Tests
 dotnet run -c Release --project tests/MD.Tests -- Energy
 
 # Run a simulation: writes out/argon-8.traj and out/argon-8.log
-dotnet run -c Release --project src/MD.Cli -- run examples/argon-8.json         # cold compact 8-atom cluster centred in a 168 x 84 x 84 box
+dotnet run -c Release --project src/MD.Cli -- run examples/argon-8.json         # cold row of three 16-atom clusters in a 168 x 84 x 84 box
 dotnet run -c Release --project src/MD.Cli -- run examples/argon-8-liquid.json  # dense liquid, box 3.4 x 1.7 x 1.7
 
 # Inspect a trajectory

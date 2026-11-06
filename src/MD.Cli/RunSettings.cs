@@ -26,6 +26,15 @@ public sealed class RunSettings
     /// </summary>
     public double[]? Box { get; set; }
 
+    /// <summary>
+    /// Number of identical clusters in a straight row along x. Each cluster is the block given by
+    /// <see cref="Cells"/>. Needs <see cref="Box"/> when greater than 1.
+    /// </summary>
+    public int ClusterCount { get; set; } = 1;
+
+    /// <summary>Gap in σ between the faces of neighbouring clusters in the row.</summary>
+    public double ClusterGap { get; set; } = 1.0;
+
     /// <summary>Starting temperature (k_B T / ε).</summary>
     public double Temperature { get; set; } = 0.722;
 
@@ -71,7 +80,7 @@ public sealed class RunSettings
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
 
     [JsonIgnore]
-    public int AtomCount => 4 * Cells[0] * Cells[1] * Cells[2];
+    public int AtomCount => 4 * Cells[0] * Cells[1] * Cells[2] * ClusterCount;
 
     public void Validate()
     {
@@ -83,6 +92,9 @@ public sealed class RunSettings
         if (!IsPositive(Density)) errors.Add("density must be positive");
         if (Box is not null && (Box.Length != 3 || Array.Exists(Box, x => !IsPositive(x))))
             errors.Add("box must be three positive lengths");
+        if (ClusterCount < 1) errors.Add("clusterCount must be at least 1");
+        if (ClusterCount > 1 && Box is null) errors.Add("clusterCount above 1 needs a box");
+        if (!(ClusterGap >= 0) || double.IsInfinity(ClusterGap)) errors.Add("clusterGap must be zero or positive");
         if (!(Temperature >= 0) || double.IsInfinity(Temperature)) errors.Add("temperature must be zero or positive");
         if (!IsPositive(Timestep)) errors.Add("timestep must be positive");
         if (Steps < 0) errors.Add("steps must be zero or positive");
