@@ -1,14 +1,14 @@
 {
-  // First-phase run: 48 atoms (three 2x2x1 FCC clusters in a row), argon-like LJ, NVE. Reduced LJ units.
-  // Cold row of three compact 16-atom FCC clusters (2x2x1 cells each), in a straight line along x with a
+  // First-phase run: 48 atoms (twelve 4-atom FCC clusters in a row), argon-like LJ, NVE. Reduced LJ units.
+  // Cold row of twelve compact 4-atom FCC clusters (1x1x1 cell each), in a straight line along x with a
   // 1 sigma gap between cluster boundaries. Lattice spacing is the Lennard-Jones minimum (density 1.0 gives
   // nearest neighbours at 2^(1/6) sigma). The row is centred in a large empty box (168 x 84 x 84 sigma), so
   // it never meets its periodic images. Low temperature, so the atoms vibrate about their sites rather than
   // evaporate. Reduced LJ units.
-  "cells": [2, 2, 1],
+  "cells": [1, 1, 1],
   "density": 1.0,
   "box": [168, 84, 84],
-  "clusterCount": 3,
+  "clusterCount": 12,
   "clusterGap": 1.0,
   "temperature": 0.05,
   "timestep": 0.005,

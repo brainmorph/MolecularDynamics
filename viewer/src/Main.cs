@@ -44,6 +44,8 @@ public partial class Main : Node3D
         BuildWorld();
         BuildUi();
         LoadTrajectory(ResolveTrajectoryPath());
+        // Render at 60 frames per second. This changes only how often the screen updates, not playback speed.
+        Engine.MaxFps = 60;
         // The mouse starts free. It is captured only by an explicit click in the window (see _Input).
     }
 
