@@ -58,6 +58,7 @@ Add new decisions at the bottom of the relevant section. When a decision changes
 - **Atom count for first run (Decided 2026-11-05):** 8 atoms (two FCC cells). Chosen over 5 because 5 does not fit the grid layout. Atom count is a parameter, so larger runs can follow once the 8-atom checks pass. Eight atoms is too few for meaningful averages or clusters, so results at this size test correctness only.
 - **Starting layout (Decided 2026-11-05):** Atoms start on a grid (FCC lattice), then receive random velocities drawn for a chosen starting temperature. Total momentum is removed so the box does not drift. Random placement is not used, since overlapping atoms make the first steps unstable.
 - **Units (Decided 2026-11-05):** Reduced LJ units. Length in σ, energy in ε, mass in m, with k_B = 1. Used everywhere in the core. Conversion to real argon units (Å, fs, K) happens only at input/output, and the conversion is a documented, tested function.
+- **Units for molecular runs (Decided 2026-11-06, WATER_PLAN.md D1):** Water uses real units (`RealUnits`): Å, kJ/mol, g/mol, e, with a core time unit of 100 fs so the integrator needs no factors; times are given in fs at input/output. LJ runs keep reduced units. The two systems are never mixed in one simulation.
 - **Ensembles (Decided 2026-11-05):** NVE only (fixed energy, no thermostat) for the first phase, so the drift check is a clean correctness test. NVT and NPT thermostats/barostats come after NVE is verified.
 
 ---
@@ -71,6 +72,8 @@ Add new decisions at the bottom of the relevant section. When a decision changes
 - Real-unit timestep guidance for all-atom systems is deferred until bonded systems are in scope.
 
 **Decided (2026-11-05):** No constraint algorithms (SHAKE/LINCS) in the first phase. They are only relevant once bonded molecules are in scope.
+
+**Decided (2026-11-06):** Water is flexible (WATER_PLAN.md D3), so constraints are still not needed. Water's timestep is about 0.5 fs, set by the energy-drift test in W3.
 
 ---
 
@@ -89,6 +92,8 @@ Initial plan:
 **Open (not blocking the first phase):**
 - Force field file format. Not needed while parameters are hard-coded argon-like values.
 - Electrostatics: not in the first phase, since LJ-only has no charges.
+
+**Changed (2026-11-06):** Electrostatics is now in scope for the water phase. Method: Ewald summation (WATER_PLAN.md D2), PME later. The LJ-only argon path is unchanged and has no charges.
 
 ---
 
@@ -212,7 +217,7 @@ Initial plan:
 | 3 | Cell list + Verlet neighbour list, tested against the O(N²) reference; larger LJ runs | Not started |
 | 4 | Analysis: g(r) and mean squared displacement, checked against published LJ data | Not started |
 | 5 | NVT thermostat (then NPT), after NVE is verified | Not started |
-| 6 | Electrostatics and rigid water (Milestone 1b, SPC/E), needs the Coulomb method decision | Not started |
+| 6 | Water (Milestone 1b), planned in WATER_PLAN.md: flexible SPC/Fw, Ewald electrostatics, real units, Nosé–Hoover. Replaces the earlier rigid SPC/E plan (changed 2026-11-06) | W0 and W1 done (2026-11-06) |
 
 Open items that can change the order: the cutoff treatment (energy-shifted, as decided, or force-shifted), and the LAMMPS/GROMACS reference comparison (Section 8), which needs software that is not installed.
 
@@ -296,6 +301,9 @@ Open items that can change the order: the cutoff treatment (energy-shifted, as d
 | 2026-11-05 | Default 8-atom example is a dilute gas: density 0.0067536 (1/125 of 0.8442), box sides 5× longer (16.8 × 8.4 × 8.4 σ). Dense-liquid setup kept as `examples/argon-8-liquid.json` | User request: the liquid box was too small to watch. The gas box exceeds 2 × cutoff. Energy check: max \|E − E0\| ≈ 0.011 ε (0.15 % of the small, mostly kinetic E0) at dt 0.005, shrinking with dt |
 | 2026-11-06 | Default example density reduced 10× in each dimension's box length (density 0.0000067536, box 168 × 84 × 84 σ, i.e. 1000× volume) | User request: atoms were crossing the walls too often to follow. Side effect: no pair comes within the cutoff, so PE = 0 and the atoms fly straight. Not a useful test of the force code; the liquid example and the tests are the physics checks |
 | 2026-11-06 | Default example starts as a cold, compact 8-atom FCC cluster at the LJ minimum spacing (density 1.0, nearest neighbours 2^(1/6) σ, T = 0.05), centred in a 168 × 84 × 84 σ box via a new optional `box` setting | User request: start close to equilibrium so low-energy behaviour is visible, and keep the box large so the cluster never meets its images. Supersedes the dilute-gas example above. `density` is only the lattice spacing when `box` is set |
+| 2026-11-06 | Water phase adopted per WATER_PLAN.md D1–D5: real units, Ewald, flexible molecules, Nosé–Hoover, SPC/Fw | User decisions. Electrostatics enters the plan for the first time; the rigid SPC/E plan in Phase 6 is replaced |
+| 2026-11-06 | Real-unit core time unit is 100 fs (Å, kJ/mol, g/mol consistent set); fs only at input/output | Keeps velocity Verlet unchanged, as WATER_PLAN.md Section 4 requires. Tested by running the same argon liquid in reduced and real units (same path to 1e-7 σ over 200 steps) |
+| 2026-11-06 | Water code lives in `MD.Core` as new classes (`RealUnits`, `Topology`); the LJ-only path is unchanged | Resolves WATER_PLAN.md W0 proposal |
 
 ---
 
@@ -304,8 +312,8 @@ Open items that can change the order: the cutoff treatment (energy-shifted, as d
 1. What is the project's primary goal (learning, research, production)?
 2. Which language to use?
 3. Which systems and force field to support first?
-4. Electrostatics method for version 1?
-5. Unit system?
+4. Electrostatics method for version 1? *(Answered 2026-11-06: Ewald for water; see Section 5.)*
+5. Unit system? *(Answered: reduced LJ units for argon, real units for water; see Section 3.)*
 6. Input and output file formats?
-7. Do we need constraints (SHAKE/LINCS) in version 1?
+7. Do we need constraints (SHAKE/LINCS) in version 1? *(Answered 2026-11-06: no; water is flexible.)*
 8. Is parallelism needed in the first version?

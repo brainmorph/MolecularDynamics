@@ -4,8 +4,7 @@ This file plans the move from the LJ-only argon engine to a realistic liquid wat
 It follows the conventions in [PLAN.md](PLAN.md): each decision has a status (**Decided**,
 **Proposed**, or **Open**), and changes are dated.
 
-**Status: Decisions D1–D5 answered (2026-11-06); plan revised to match.** Nothing here has been
-built yet.
+**Status: Decisions D1–D5 answered (2026-11-06). W0 and W1 done (2026-11-06).** Next: W2 (Ewald).
 
 ---
 
@@ -51,10 +50,10 @@ before W2 starts.
 
 Each milestone ends with tests that pass. Nothing moves on until the tests for the milestone pass.
 
-### W0: Prerequisites (no physics changes)
-- D1–D5 are answered (Section 2). Record the electrostatics change in PLAN.md with a date.
-- Decide where the water code lives. Proposal: new classes in `MD.Core`, with the LJ-only path unchanged.
-- Make sure the existing 37 tests still pass before starting.
+### W0: Prerequisites (no physics changes) — Done (2026-11-06)
+- D1–D5 are answered (Section 2). Record the electrostatics change in PLAN.md with a date. *(Done: PLAN.md Sections 3, 4, 5, phase table and decision log.)*
+- Decide where the water code lives. *(Decided: new classes in `MD.Core`, with the LJ-only path unchanged.)*
+- Make sure the existing 37 tests still pass before starting. *(Done: 37/37 passed before any change.)*
 
 ### W1: Units and topology
 - Add a unit system for real units, with conversion functions tested against the existing reduced-unit code.
@@ -62,6 +61,31 @@ Each milestone ends with tests that pass. Nothing moves on until the tests for t
 - Atom types: O (LJ and charge) and H (charge only, no LJ), as in SPC/Fw.
 - Exclusions: atoms in the same molecule do not interact through LJ or Coulomb terms. Their interaction comes only from the bond and angle terms. The exact rule must match the SPC/Fw paper.
 - **Tests:** unit round trips; topology builds the expected bond and angle counts for a known molecule.
+
+**Done (2026-11-06).** What was built:
+- `RealUnits` (`src/MD.Core/RealUnits.cs`): Å, kJ/mol, g/mol, e. The core time unit is the one these
+  imply, 100 fs exactly, so velocity Verlet needs no conversion factor; fs is used only at input/output
+  (**Decided 2026-11-06**, see PLAN.md decision log). Also R in kJ/(mol·K), the Coulomb constant
+  1/(4πε₀) = 1389.35 kJ·Å/(mol·e²) for W2, pressure (bar) and density (g/cm³) conversions.
+- `AtomType`, `MoleculeTemplate`, `BondTerm`, `AngleTerm`, `Topology` (`src/MD.Core/Topology.cs`).
+  Charge, mass and LJ parameters are per type; a type with ε = 0 has no LJ site (H in SPC/Fw).
+  Named `BondTerm`/`AngleTerm` because the trajectory format already has a `Bond`. Force
+  constants are added in W3.
+- Exclusion rule implemented: all pairs in the same molecule are excluded from LJ and Coulomb.
+  For three-site water this equals excluding 1-2 and 1-3 pairs. **Still to check against the SPC/Fw paper (before W4).**
+- Tests (`tests/MD.Tests/RealUnitsTests.cs`, `TopologyTests.cs`, 8 new, 45/45 pass):
+  constants against known values; round trips; argon's τ, ε/σ³, m/σ³ and T through `RealUnits`
+  equal the `ArgonUnits` values; the same 8-atom argon liquid run in reduced and in real units follows
+  the same path (within 1e-7 σ after 200 steps); topology counts, global indices, charges and
+  exclusions for a placeholder water-shaped molecule (not SPC/Fw values).
+- Agreement limit: since the 2019 SI, 1 g/mol / N_A differs from the atomic mass unit in `ArgonUnits`
+  by about 3 × 10⁻¹⁰ (relative), so the cross-checks use a 10⁻⁹ tolerance.
+
+**Not done in W1, carried forward:**
+- LJ cutoff treatment for water (Section 4): the energy-shifted cutoff, a force-shifted one, or
+  whatever the SPC/Fw paper used. **Open**; should match the paper, so it is settled with W4's parameters.
+- `Thermo` and `ThermoState` still assume k_B = 1. In real units their "temperature" is in kJ/mol and must
+  go through `RealUnits.EnergyToKelvin`. To fix when the water run path is built (W4/W5).
 
 ### W2: Coulomb electrostatics (Ewald)
 - Real-space sum with a cutoff, reciprocal-space sum, self-energy and charged-system correction.

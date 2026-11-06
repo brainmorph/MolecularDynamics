@@ -4,7 +4,8 @@ namespace MD.Core;
 
 /// <summary>
 /// State of all particles. Positions are kept wrapped into the box; <see cref="Images"/> records
-/// boundary crossings so unwrapped positions are exact. Everything is in reduced LJ units.
+/// boundary crossings so unwrapped positions are exact. Units are those of the simulation: reduced LJ
+/// units for argon runs, or <see cref="RealUnits"/> for molecular runs. The two are never mixed.
 /// </summary>
 public sealed class ParticleSystem
 {
