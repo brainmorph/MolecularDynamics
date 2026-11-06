@@ -217,7 +217,7 @@ Initial plan:
 | 3 | Cell list + Verlet neighbour list, tested against the O(N²) reference; larger LJ runs | Not started |
 | 4 | Analysis: g(r) and mean squared displacement, checked against published LJ data | Not started |
 | 5 | NVT thermostat (then NPT), after NVE is verified | Not started |
-| 6 | Water (Milestone 1b), planned in WATER_PLAN.md: flexible SPC/Fw, Ewald electrostatics, real units, Nosé–Hoover. Replaces the earlier rigid SPC/E plan (changed 2026-11-06) | W0–W3 done (2026-11-06) |
+| 6 | Water (Milestone 1b), planned in WATER_PLAN.md: flexible SPC/Fw, Ewald electrostatics, real units, Nosé–Hoover. Replaces the earlier rigid SPC/E plan (changed 2026-11-06) | W0–W4 done (2026-11-06) |
 
 Open items that can change the order: the cutoff treatment (energy-shifted, as decided, or force-shifted), and the LAMMPS/GROMACS reference comparison (Section 8), which needs software that is not installed.
 
@@ -304,6 +304,8 @@ Open items that can change the order: the cutoff treatment (energy-shifted, as d
 | 2026-11-06 | Water phase adopted per WATER_PLAN.md D1–D5: real units, Ewald, flexible molecules, Nosé–Hoover, SPC/Fw | User decisions. Electrostatics enters the plan for the first time; the rigid SPC/E plan in Phase 6 is replaced |
 | 2026-11-06 | Real-unit core time unit is 100 fs (Å, kJ/mol, g/mol consistent set); fs only at input/output | Keeps velocity Verlet unchanged, as WATER_PLAN.md Section 4 requires. Tested by running the same argon liquid in reduced and real units (same path to 1e-7 σ over 200 steps) |
 | 2026-11-06 | Water code lives in `MD.Core` as new classes (`RealUnits`, `Topology`); the LJ-only path is unchanged | Resolves WATER_PLAN.md W0 proposal |
+| 2026-11-06 | Water timestep 0.5 fs (SPC/Fw, flexible) | WATER_PLAN.md W4 energy test: 27 molecules, 1 ps NVE, max \|E − E0\| 0.54 % of KE0, second order, no drift |
+| 2026-11-06 | SPC/Fw parameters taken from secondary sources citing Wu, Tepper & Voth (2006); LJ digits unverified | Primary paper paywalled; sources recorded in WATER_PLAN.md Section 7 |
 
 ---
 

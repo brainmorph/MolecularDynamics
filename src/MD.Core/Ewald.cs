@@ -164,30 +164,52 @@ public sealed class Ewald
         int mz = (int)Math.Floor(ReciprocalCutoff * L.Z / twoPi);
         double inv4a2 = 1.0 / (4.0 * Alpha * Alpha);
         int count = positions.Length;
-        var cos = new double[count];
-        var sin = new double[count];
-        double energy = 0;
         double energyPrefactor = CoulombConstant * twoPi / V;
         double forcePrefactor = 2.0 * energyPrefactor; // 4πk/V
 
+        // Per-axis phase factors e^(i·2π·h·x/L) for h = −m..m, built by repeated complex
+        // multiplication from h = ±1 (no sin/cos per k-vector). Then e^(ik·r) = ex·ey·ez.
+        var (exRe, exIm) = AxisPhases(positions, count, mx, twoPi / L.X, 0);
+        var (eyRe, eyIm) = AxisPhases(positions, count, my, twoPi / L.Y, 1);
+        var (ezRe, ezIm) = AxisPhases(positions, count, mz, twoPi / L.Z, 2);
+        var cos = new double[count];
+        var sin = new double[count];
+        var xyRe = new double[count];
+        var xyIm = new double[count];
+        double energy = 0;
+
         for (int hx = -mx; hx <= mx; hx++)
         {
+            double kx = twoPi * hx / L.X;
+            int ix = (hx + mx) * count;
             for (int hy = -my; hy <= my; hy++)
             {
+                double ky = twoPi * hy / L.Y;
+                double kxy2 = kx * kx + ky * ky;
+                if (kxy2 > kc2) continue;
+                int iy = (hy + my) * count;
+                for (int j = 0; j < count; j++)
+                {
+                    double ar = exRe[ix + j], ai = exIm[ix + j], br = eyRe[iy + j], bi = eyIm[iy + j];
+                    xyRe[j] = ar * br - ai * bi;
+                    xyIm[j] = ar * bi + ai * br;
+                }
                 for (int hz = -mz; hz <= mz; hz++)
                 {
                     if (hx == 0 && hy == 0 && hz == 0) continue;
-                    var k = new Vec3(twoPi * hx / L.X, twoPi * hy / L.Y, twoPi * hz / L.Z);
-                    double k2 = k.LengthSquared;
+                    double kz = twoPi * hz / L.Z;
+                    double k2 = kxy2 + kz * kz;
                     if (k2 > kc2) continue;
+                    var k = new Vec3(kx, ky, kz);
                     double ak = Math.Exp(-k2 * inv4a2) / k2;
+                    int iz = (hz + mz) * count;
 
                     double sRe = 0, sIm = 0;
                     for (int j = 0; j < count; j++)
                     {
-                        double phase = Vec3.Dot(k, positions[j]);
-                        cos[j] = Math.Cos(phase);
-                        sin[j] = Math.Sin(phase);
+                        double cr = ezRe[iz + j], ci = ezIm[iz + j];
+                        cos[j] = xyRe[j] * cr - xyIm[j] * ci;
+                        sin[j] = xyRe[j] * ci + xyIm[j] * cr;
                         sRe += q[j] * cos[j];
                         sIm += q[j] * sin[j];
                     }
@@ -204,6 +226,35 @@ public sealed class Ewald
             }
         }
         return energy;
+    }
+
+    /// <summary>
+    /// Re and Im of e^(i·h·g·x_axis) for h = −m..m and every atom, stored at [(h + m)·count + atom].
+    /// h = ±1 come from cos/sin directly; the rest by multiplying by the h = 1 factor (or its conjugate).
+    /// </summary>
+    private static (double[] Re, double[] Im) AxisPhases(ReadOnlySpan<Vec3> positions, int count, int m, double g, int axis)
+    {
+        var re = new double[(2 * m + 1) * count];
+        var im = new double[(2 * m + 1) * count];
+        for (int j = 0; j < count; j++)
+        {
+            double x = axis == 0 ? positions[j].X : axis == 1 ? positions[j].Y : positions[j].Z;
+            double c1 = Math.Cos(g * x), s1 = Math.Sin(g * x);
+            re[m * count + j] = 1.0;
+            im[m * count + j] = 0.0;
+            double cr = 1.0, ci = 0.0;
+            for (int h = 1; h <= m; h++)
+            {
+                double nr = cr * c1 - ci * s1;
+                ci = cr * s1 + ci * c1;
+                cr = nr;
+                re[(m + h) * count + j] = cr;
+                im[(m + h) * count + j] = ci;
+                re[(m - h) * count + j] = cr;
+                im[(m - h) * count + j] = -ci;
+            }
+        }
+        return (re, im);
     }
 
     private double ExclusionCorrection(ReadOnlySpan<Vec3> positions, Box box, Topology topology, double[] q, Span<Vec3> forces)
@@ -228,4 +279,24 @@ public sealed class Ewald
         }
         return energy;
     }
+}
+
+/// <summary>
+/// <see cref="Ewald"/> as an <see cref="IForceField"/>, with charges and exclusions from a topology.
+/// The virial is reported as NaN until the Ewald virial is implemented (W5), so a pressure computed
+/// from it shows as NaN instead of a silently wrong number.
+/// </summary>
+public sealed class EwaldForceField : IForceField
+{
+    public EwaldForceField(Ewald ewald, Topology topology)
+    {
+        Ewald = ewald ?? throw new ArgumentNullException(nameof(ewald));
+        Topology = topology ?? throw new ArgumentNullException(nameof(topology));
+    }
+
+    public Ewald Ewald { get; }
+    public Topology Topology { get; }
+
+    public ForceResult Compute(ReadOnlySpan<Vec3> positions, Box box, Span<Vec3> forces) =>
+        new(Ewald.Compute(positions, box, Topology, forces).Total, double.NaN);
 }

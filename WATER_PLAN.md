@@ -4,7 +4,7 @@ This file plans the move from the LJ-only argon engine to a realistic liquid wat
 It follows the conventions in [PLAN.md](PLAN.md): each decision has a status (**Decided**,
 **Proposed**, or **Open**), and changes are dated.
 
-**Status: Decisions D1–D5 answered (2026-11-06). W0–W3 done (2026-11-06).** Next: W4 (SPC/Fw parameters, which need the paper).
+**Status: Decisions D1–D5 answered (2026-11-06). W0–W4 done (2026-11-06).** Next: W5 (Nosé–Hoover thermostat, then barostat).
 
 ---
 
@@ -156,6 +156,32 @@ Each milestone ends with tests that pass. Nothing moves on until the tests for t
 - **Tests:** a single molecule's equilibrium geometry matches the paper; net charge is zero;
   the molecule stays bonded over a long NVE run.
 
+**Done (2026-11-06).** What was built:
+- `SpcFw` (`src/MD.Core/SpcFw.cs`): parameters with their sources (Section 7), the molecule template,
+  equilibrium geometry, and `SpcFw.ForceField` = bonded + O–O LJ + Ewald. kcal → kJ with 4.184 (exact).
+- `MolecularLennardJones`: LJ only between atoms with an LJ site, skipping excluded pairs, truncated and
+  energy-shifted (the PLAN.md convention). Refuses two different LJ types (no mixing rule decided).
+- `EwaldForceField`: Ewald as an `IForceField`. Reports virial = NaN until W5, so pressure shows NaN, not a wrong value.
+- `WaterBox.Cubic`: n³ molecules on a grid at a target density, random orientations.
+- Ewald reciprocal sum now builds e^(ik·r) from per-axis phase factors (no sin/cos per k-vector):
+  4.8× faster, same trajectory; all W2 Ewald tests still pass.
+- Tests (`tests/MD.Tests/WaterTests.cs`, 5 new, 66/66 pass, suite ≈ 24 s):
+  - Parameters equal the recorded values; molecule and box are neutral; box density is exactly 1 g/cm³.
+  - One molecule relaxed under the full force field (30 Å box) reaches r0 to 5e-6 Å and θ0 to 0.006°
+    (the image forces); leaking exclusions would distort it grossly.
+  - 27 molecules, 1 ps NVE at 0.5 fs: max |E − E0| = 0.54 % of KE0, drift −8e-5 of KE0; bonds stay in
+    0.95–1.11 Å, angles in 76–140° (all within 6σ thermal bounds at 1000 K); no H leaves its O.
+  - Energy error is second order with the full force field (0.5 → 0.25 fs, ratio ≈ 4.1).
+- **Timestep (Decided 2026-11-06, by the energy test as planned):** 0.5 fs for SPC/Fw.
+
+**Known issues carried forward:**
+- **Hot start.** The grid start releases potential energy: the 27-molecule box goes from 300 K to as high
+  as 922 K within 1 ps. W5/W6 need an equilibration step (energy minimisation, then thermostat) before measuring.
+- **LJ cutoff treatment** (Section 4): energy-shifted, as for argon. What the SPC/Fw paper used (cutoff,
+  shift, tail correction) is not known, and it affects the density in W6. **Open.**
+- **ε and σ digits** (Section 7) are unverified against the primary paper.
+- Test settings use cutoffs of 0.49 × box (4.6 Å) because the test box is small; production runs need a larger box.
+
 ### W5: Thermostat and barostat (NVT, then NPT)
 - Nosé–Hoover thermostat (D4), with tests against an analytic harmonic oscillator.
 - Barostat for NPT, once the thermostat is verified.
@@ -218,3 +244,16 @@ No literature values have been checked yet. Before any water result is compared 
 - The Madelung constant for NaCl, for the Ewald test in W2. **Recorded (2026-11-06):** M = 1.7475645946331821 (nearest-neighbour distance as the length), from the CARMA numbers page, https://carmamaths.org/resources/numbers/page/main.html; Wikipedia's Madelung constant table gives ±1.747565 for the same convention.
 
 Record each source here with the value used.
+
+**SPC/Fw parameters used (recorded 2026-11-06).** The primary paper is paywalled and was not read. Values come from:
+- Faulkner, Qin, Maggs & Krauth, *All-atom computations with irreversible Markov chains*, arXiv:1804.05795
+  (2018), Section V.A, citing Wu et al. as its ref. 28: U_bond = ½k_b(r − r0)², k_b = 1059.162 kcal/(mol·Å²),
+  r0 = 1.012 Å; U_bend = ½k_a(θ − θ0)², k_a = 75.90 kcal/(mol·rad²), θ0 = 113.24°; q_O = −0.82 e,
+  q_H = +0.41 e; LJ 4ε = 0.62 kcal/mol, σ = 3.165 Å. (Its unit labels for k_b and k_a are swapped.)
+  https://arxiv.org/abs/1804.05795
+- Raabe & Sadus (2007), J. Chem. Phys. 126, 044701, via search summary: SPC/Fw r0 = 1.012, θ0 = 113.24, and
+  "LJ parameters and partial charges ... identical to those used in the SPC model".
+- LAMMPS *Howto spc*, https://docs.lammps.org/Howto_spc.html: SPC ε_OO = 0.1553 kcal/mol, σ_OO = 3.166 Å,
+  q_O = −0.820, q_H = 0.410, masses O 15.9994, H 1.008.
+- **Used:** ε_OO = 0.1554 kcal/mol, σ_OO = 3.1655 Å (the sources span 0.1553–0.1555 and 3.165–3.166).
+  **Open:** confirm against Table I of Wu, Tepper & Voth (2006) if a copy becomes available.
