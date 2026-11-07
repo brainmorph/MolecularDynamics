@@ -6,11 +6,16 @@ using System.Text.Json.Serialization;
 namespace MD.Cli;
 
 /// <summary>
-/// Run settings, read from a JSON file. All physical values are in reduced LJ units.
+/// Settings for an argon run, read from a JSON file. All physical values are in reduced LJ units.
 /// Unknown keys are rejected so typos do not silently fall back to defaults.
 /// </summary>
 public sealed class RunSettings
 {
+    public const string SystemName = "argon";
+
+    /// <summary>"argon" (the default when the key is absent). Water runs use <see cref="WaterRunSettings"/>.</summary>
+    public string System { get; set; } = SystemName;
+
     /// <summary>FCC cells along x, y, z. Atom count = 4·x·y·z. [2,1,1] gives 8 atoms.</summary>
     public int[] Cells { get; set; } = { 2, 1, 1 };
 
@@ -77,6 +82,20 @@ public sealed class RunSettings
         return s;
     }
 
+    /// <summary>The "system" key of a settings file, or "argon" when it is absent.</summary>
+    public static string SystemOf(string json)
+    {
+        using JsonDocument doc = JsonDocument.Parse(json, new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+        });
+        if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new SettingsException("Settings must be a JSON object.");
+        if (!doc.RootElement.TryGetProperty("system", out JsonElement system)) return SystemName;
+        if (system.ValueKind != JsonValueKind.String) throw new SettingsException("system must be a string.");
+        return system.GetString()!;
+    }
+
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
 
     [JsonIgnore]
@@ -85,6 +104,7 @@ public sealed class RunSettings
     public void Validate()
     {
         var errors = new List<string>();
+        if (System != SystemName) errors.Add($"system must be \"{SystemName}\"");
         if (Cells is not { Length: 3 } || Cells[0] < 1 || Cells[1] < 1 || Cells[2] < 1)
             errors.Add("cells must be three integers, each at least 1");
         else if ((long)Cells[0] * Cells[1] * Cells[2] > 1_000_000)

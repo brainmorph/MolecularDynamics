@@ -14,5 +14,6 @@
     <!-- The viewer's spec-based reader (no Godot types), compiled here only to check that the
          viewer and the core agree on the trajectory format. The viewer never references the core. -->
     <Compile Include="../../viewer/src/Trajectory/TrajectoryFile.cs" Link="Conformance/ViewerTrajectoryFile.cs" />
+    <Compile Include="../../viewer/src/Trajectory/DisplayLayout.cs" Link="Conformance/ViewerDisplayLayout.cs" />
   </ItemGroup>
 </Project>

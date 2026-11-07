@@ -75,14 +75,23 @@ public sealed class TrajectoryWriter : IDisposable
         }
     }
 
-    /// <summary>Builds a frame from the current state of a simulation.</summary>
-    public static TrajectoryFrame FrameFrom(Simulation sim)
+    /// <summary>Builds a frame from the current state of a simulation, with the given bonds (none if null).</summary>
+    public static TrajectoryFrame FrameFrom(Simulation sim, Bond[]? bonds = null)
     {
         ThermoState t = sim.State;
         ParticleSystem s = sim.System;
         return new TrajectoryFrame(
             t.Step, t.Time, t.KineticEnergy, t.PotentialEnergy, t.TotalEnergy,
-            s.Box.Lengths, (Vec3[])s.Positions.Clone(), (Int3[])s.Images.Clone(), Array.Empty<Bond>());
+            s.Box.Lengths, (Vec3[])s.Positions.Clone(), (Int3[])s.Images.Clone(), bonds ?? Array.Empty<Bond>());
+    }
+
+    /// <summary>The topology's bonds as trajectory bonds. Bonds come from the topology, never from distances.</summary>
+    public static Bond[] BondsFrom(Topology topology)
+    {
+        ArgumentNullException.ThrowIfNull(topology);
+        var bonds = new Bond[topology.Bonds.Count];
+        for (int k = 0; k < bonds.Length; k++) bonds[k] = new Bond((uint)topology.Bonds[k].I, (uint)topology.Bonds[k].J);
+        return bonds;
     }
 
     public void Flush() => _w.Flush();

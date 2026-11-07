@@ -9,7 +9,10 @@ namespace MDViewer;
 
 /// <summary>
 /// Plays back a trajectory file. Display only: every energy shown comes from the file, written by
-/// the core. The viewer never computes forces, energies or bonds.
+/// the core, and bonds are drawn from the file's bond list. The viewer never computes forces,
+/// energies or bonds.
+///
+/// One Godot unit is one length unit of the file: σ for "lj-reduced" runs, Å for "real" runs.
 ///
 /// Usage: godot --path viewer -- path/to/run.traj   (default: ../out/argon-8.traj)
 /// </summary>
@@ -18,9 +21,22 @@ public partial class Main : Node3D
     /// <summary>Trajectory frames shown per second of playback.</summary>
     private const double PlaybackFramesPerSecond = 30.0;
 
-    /// <summary>Display radius of an atom sphere, in σ (1 Godot unit = 1σ). Smaller than the
+    /// <summary>Display radius of an atom sphere in "lj-reduced" files, in σ. Smaller than the
     /// contact distance (~0.5σ) so the structure inside the box stays visible.</summary>
-    private const float AtomRadius = 0.3f;
+    private const float ReducedAtomRadius = 0.3f;
+
+    /// <summary>Bond stick radius, in the file's length unit (σ or Å).</summary>
+    private const float BondRadius = 0.09f;
+
+    /// <summary>Ball-and-stick sphere radii for "real" files, in Å (display sizes, not physical radii).</summary>
+    private static float RealAtomRadius(string element) => element switch
+    {
+        "H" => 0.22f,
+        "O" => 0.36f,
+        _ => 0.32f,
+    };
+
+    private const string RealUnits = "real";
 
     private TrajectoryFile? _trajectory;
     private string _loadedPath = "";
@@ -28,6 +44,11 @@ public partial class Main : Node3D
 
     private FlyCamera _camera = null!;
     private MultiMesh _atoms = null!;
+    private MultiMesh _bonds = null!;
+    private readonly DisplayLayout _layout = new();
+    private double[] _layoutPositions = Array.Empty<double>();
+    private float[] _radii = Array.Empty<float>();
+    private Color[] _colors = Array.Empty<Color>();
     private MeshInstance3D _boxOutline = null!;
     private ImmediateMesh _boxMesh = null!;
     private Vector3 _drawnBox = Vector3.Zero;
@@ -116,25 +137,41 @@ public partial class Main : Node3D
         var box = new Vector3((float)a.BoxX, (float)a.BoxY, (float)a.BoxZ);
         if (box != _drawnBox) DrawBox(box);
 
-        // Display-only smoothing: interpolate unwrapped positions (so atoms crossing a boundary do
-        // not sweep across the box), then wrap back into the box for display.
+        // Display-only placement: interpolate unwrapped positions, wrap into the box, and keep
+        // bonded atoms together (see DisplayLayout).
+        _layout.Positions(a, b, alpha, t.AtomCount, _layoutPositions);
         for (int i = 0; i < t.AtomCount; i++)
         {
-            var p = new Vector3(
-                Wrap(Lerp(a.Unwrapped(i, 0), b.Unwrapped(i, 0), alpha), a.BoxX),
-                Wrap(Lerp(a.Unwrapped(i, 1), b.Unwrapped(i, 1), alpha), a.BoxY),
-                Wrap(Lerp(a.Unwrapped(i, 2), b.Unwrapped(i, 2), alpha), a.BoxZ));
+            var p = new Vector3((float)_layoutPositions[3 * i], (float)_layoutPositions[3 * i + 1], (float)_layoutPositions[3 * i + 2]);
             _displayPositions[i] = p;
-            _atoms.SetInstanceTransform(i, new Transform3D(Basis.Identity, p));
+            _atoms.SetInstanceTransform(i, new Transform3D(Basis.Identity.Scaled(Vector3.One * _radii[i]), p));
+        }
+
+        // Each bond is two half-sticks, each in the colour of its own atom.
+        int bondCount = a.Bonds.Length / 2;
+        if (_bonds.InstanceCount != 2 * bondCount) _bonds.InstanceCount = 2 * bondCount;
+        for (int k = 0; k < bondCount; k++)
+        {
+            int i = (int)a.Bonds[2 * k], j = (int)a.Bonds[2 * k + 1];
+            Vector3 mid = (_displayPositions[i] + _displayPositions[j]) / 2;
+            _bonds.SetInstanceTransform(2 * k, Stick(_displayPositions[i], mid));
+            _bonds.SetInstanceTransform(2 * k + 1, Stick(mid, _displayPositions[j]));
+            _bonds.SetInstanceColor(2 * k, _colors[i]);
+            _bonds.SetInstanceColor(2 * k + 1, _colors[j]);
         }
     }
 
-    private static double Lerp(double x, double y, double alpha) => x + (y - x) * alpha;
-
-    private static float Wrap(double x, double length)
+    /// <summary>Transform taking the unit cylinder (radius 1, height 1, along y, centred) to a stick from <paramref name="from"/> to <paramref name="to"/>.</summary>
+    private static Transform3D Stick(Vector3 from, Vector3 to)
     {
-        double w = x - length * Math.Floor(x / length);
-        return (float)(w >= length ? 0 : w);
+        Vector3 d = to - from;
+        float length = d.Length();
+        if (length < 1e-6f) return new Transform3D(Basis.Identity.Scaled(Vector3.Zero), from);
+        Vector3 axis = d / length;
+        Vector3 helper = Math.Abs(axis.X) < 0.9f ? Vector3.Right : Vector3.Up;
+        Vector3 u = axis.Cross(helper).Normalized();
+        Vector3 w = axis.Cross(u);
+        return new Transform3D(new Basis(u * BondRadius, d, w * BondRadius), from + d / 2);
     }
 
     // ---------------------------------------------------------------- diagnostics (F1)
@@ -152,16 +189,25 @@ public partial class Main : Node3D
             return;
         }
 
-        text.AppendLine(string.Format(ci, "Atoms on screen {0} / {1}", CountAtomsInView(), t.AtomCount));
+        text.AppendLine(string.Format(ci, "Atoms on screen {0} / {1}   bonds {2}", CountAtomsInView(), t.AtomCount, t.Frames[0].Bonds.Length / 2));
         text.AppendLine();
 
         // Energies are shown for the current trajectory frame, exactly as the core wrote them.
         int index = (int)Math.Floor(_playhead);
         TrajectoryFrame f = t.Frames[index];
         text.AppendLine(string.Format(ci, "Frame {0} / {1}   step {2}", index, t.Frames.Count - 1, f.Step));
-        text.AppendLine(string.Format(ci, "Time  {0:F3} τ  ({1:F3} ps argon)", f.Time, f.Time * t.TauFemtoseconds / 1000.0));
+        bool real = t.Units == RealUnits;
+        string energyUnit = real ? "kJ/mol" : "ε";
+        if (real)
+        {
+            text.AppendLine(string.Format(ci, "Time  {0:F4} ps", f.Time * t.TauFemtoseconds / 1000.0));
+        }
+        else
+        {
+            text.AppendLine(string.Format(ci, "Time  {0:F3} τ  ({1:F3} ps argon)", f.Time, f.Time * t.TauFemtoseconds / 1000.0));
+        }
         text.AppendLine();
-        text.AppendLine("Energy (from trajectory, units of ε):");
+        text.AppendLine($"Energy (from trajectory, {(real ? "kJ/mol" : "units of ε")}):");
         text.AppendLine(string.Format(ci, "  Kinetic    {0,14:F6}", f.KineticEnergy));
         text.AppendLine(string.Format(ci, "  Potential  {0,14:F6}", f.PotentialEnergy));
         text.AppendLine(string.Format(ci, "  Total      {0,14:F6}", f.TotalEnergy));
@@ -173,7 +219,7 @@ public partial class Main : Node3D
             ? string.Format(ci, "{0:+0.0000;-0.0000} %", 100.0 * drift / Math.Abs(t.InitialTotalEnergy))
             : "n/a";
         text.AppendLine("Drift E − E0 (display arithmetic on core values):");
-        text.AppendLine(string.Format(ci, "  {0:+0.000E+0;-0.000E+0} ε   {1} of |E0|", drift, percent));
+        text.AppendLine(string.Format(ci, "  {0:+0.000E+0;-0.000E+0} {1}   {2} of |E0|", drift, energyUnit, percent));
 
         if (t.Warning != null)
         {
@@ -188,13 +234,14 @@ public partial class Main : Node3D
     {
         var planes = _camera.GetFrustum();
         int count = 0;
-        foreach (Vector3 p in _displayPositions)
+        for (int i = 0; i < _displayPositions.Length; i++)
         {
+            Vector3 p = _displayPositions[i];
             bool inside = true;
             foreach (Plane plane in planes)
             {
                 // Frustum plane normals point outwards.
-                if (plane.DistanceTo(p) > AtomRadius)
+                if (plane.DistanceTo(p) > _radii[i])
                 {
                     inside = false;
                     break;
@@ -244,21 +291,33 @@ public partial class Main : Node3D
         }
         if (t.Warning != null) ShowMessage(t.Warning, seconds: 6);
 
+        bool real = t.Units == RealUnits;
         _atoms.InstanceCount = t.AtomCount;
         _displayPositions = new Vector3[t.AtomCount];
-        for (int i = 0; i < t.AtomCount; i++) _atoms.SetInstanceColor(i, ElementColor(t.Elements[i]));
+        _layoutPositions = new double[3 * t.AtomCount];
+        _radii = new float[t.AtomCount];
+        _colors = new Color[t.AtomCount];
+        for (int i = 0; i < t.AtomCount; i++)
+        {
+            _radii[i] = real ? RealAtomRadius(t.Elements[i]) : ReducedAtomRadius;
+            _colors[i] = ElementColor(t.Elements[i]);
+            _atoms.SetInstanceColor(i, _colors[i]);
+        }
 
         TrajectoryFrame first = t.Frames[0];
         var box = new Vector3((float)first.BoxX, (float)first.BoxY, (float)first.BoxZ);
         Vector3 centre = box / 2;
         float size = Math.Max(box.X, Math.Max(box.Y, box.Z));
         _camera.LookFrom(centre + new Vector3(0.6f * size, 0.5f * size, 1.6f * size), centre);
+        // Argon files keep the original 30 σ/s. Real-unit boxes are a few tens of Å, so move at
+        // about half a box side per second there.
+        _camera.Speed = real ? Math.Max(0.5f * size, 2f) : 30f;
         _playhead = 0;
         ShowPlayhead(t);
         GetWindow().Title = $"MD Viewer – {Path.GetFileName(path)} ({t.AtomCount} atoms, {t.Frames.Count} frames)";
     }
 
-    /// <summary>Display colours by element label. Labels do not change the physics (all atoms are argon-like LJ).</summary>
+    /// <summary>Display colours by element label. In "lj-reduced" files labels do not change the physics (all atoms are argon-like LJ).</summary>
     private static Color ElementColor(string element) => element switch
     {
         "Ar" => new Color(0.35f, 0.75f, 0.95f),
@@ -300,7 +359,8 @@ public partial class Main : Node3D
         AddChild(_camera);
 
         // Instanced spheres: one draw call for all atoms (rendering approach is still Open in the plan).
-        var sphere = new SphereMesh { Radius = AtomRadius, Height = 2 * AtomRadius, RadialSegments = 24, Rings = 12 };
+        // Unit sphere; each instance is scaled to its atom's display radius.
+        var sphere = new SphereMesh { Radius = 1f, Height = 2f, RadialSegments = 24, Rings = 12 };
         sphere.Material = new StandardMaterial3D { VertexColorUseAsAlbedo = true, Roughness = 0.5f };
         _atoms = new MultiMesh
         {
@@ -309,6 +369,17 @@ public partial class Main : Node3D
             Mesh = sphere,
         };
         AddChild(new MultiMeshInstance3D { Multimesh = _atoms });
+
+        // Instanced bond sticks: unit cylinder, scaled and oriented per half-bond.
+        var cylinder = new CylinderMesh { TopRadius = 1f, BottomRadius = 1f, Height = 1f, RadialSegments = 12, Rings = 1, CapTop = false, CapBottom = false };
+        cylinder.Material = new StandardMaterial3D { VertexColorUseAsAlbedo = true, Roughness = 0.5f };
+        _bonds = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            UseColors = true,
+            Mesh = cylinder,
+        };
+        AddChild(new MultiMeshInstance3D { Multimesh = _bonds });
 
         _boxMesh = new ImmediateMesh();
         _boxOutline = new MeshInstance3D

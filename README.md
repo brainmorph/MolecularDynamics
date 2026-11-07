@@ -29,12 +29,15 @@ dotnet run -c Release --project tests/MD.Tests -- Energy
 # Run a simulation: writes out/argon-8.traj and out/argon-8.log
 dotnet run -c Release --project src/MD.Cli -- run examples/argon-8.json         # cold row of three 16-atom clusters in a 168 x 84 x 84 box
 dotnet run -c Release --project src/MD.Cli -- run examples/argon-8-liquid.json  # dense liquid, box 3.4 x 1.7 x 1.7
+dotnet run -c Release --project src/MD.Cli -- run examples/water-64.json        # 64 SPC/Fw water molecules, 2 ps (about 50 s)
 
 # Inspect a trajectory
 dotnet run -c Release --project src/MD.Cli -- dump out/argon-8.traj
 ```
 
 Paths in a settings file are relative to that file. Unknown settings keys are rejected.
+Argon settings are in reduced LJ units. Water settings (`"system": "water"`) are in real units, with
+the unit in each key name (`temperatureKelvin`, `timestepFemtoseconds`, ...).
 
 ## Viewer
 
@@ -57,7 +60,8 @@ scripts/view-latest.sh some/dir   # newest .traj under some/dir (set GODOT to ov
 | Esc | open/close menu (Restart, Quit); playback and camera pause while it is open |
 | F1 | show/hide diagnostics: FPS, frame time, atoms on screen, KE/PE/E from the file, drift E − E0 |
 
-Display scale is 1 Godot unit = 1σ, atoms drawn with radius 0.3σ. Camera field of view is 60° vertical. Playback runs at 30 trajectory
+Display scale is 1 Godot unit = one length unit of the file: 1σ for argon (atoms drawn with radius 0.3σ), 1 Å for water
+(ball-and-stick: O 0.36 Å, H 0.22 Å, bonds from the file, each molecule drawn whole). Camera field of view is 60° vertical. Playback runs at 30 trajectory
 frames per second and stops on the last frame. Positions between frames are interpolated for
 display only; energies always show the current frame's stored values.
 

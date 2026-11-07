@@ -217,7 +217,7 @@ Initial plan:
 | 3 | Cell list + Verlet neighbour list, tested against the O(N²) reference; larger LJ runs | Not started |
 | 4 | Analysis: g(r) and mean squared displacement, checked against published LJ data | Not started |
 | 5 | NVT thermostat (then NPT), after NVE is verified | Not started |
-| 6 | Water (Milestone 1b), planned in WATER_PLAN.md: flexible SPC/Fw, Ewald electrostatics, real units, Nosé–Hoover. Replaces the earlier rigid SPC/E plan (changed 2026-11-06) | W0–W4 done (2026-11-06) |
+| 6 | Water (Milestone 1b), planned in WATER_PLAN.md: flexible SPC/Fw, Ewald electrostatics, real units, Nosé–Hoover. Replaces the earlier rigid SPC/E plan (changed 2026-11-06) | W0–W4 and W7 (visualization) done (2026-11-06) |
 
 Open items that can change the order: the cutoff treatment (energy-shifted, as decided, or force-shifted), and the LAMMPS/GROMACS reference comparison (Section 8), which needs software that is not installed.
 

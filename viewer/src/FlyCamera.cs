@@ -11,7 +11,7 @@ public partial class FlyCamera : Camera3D
     /// <summary>When false (menu open) the camera ignores input and does not move.</summary>
     public bool Active { get; set; } = true;
 
-    public float Speed { get; set; } = 30.0f;         // σ per second
+    public float Speed { get; set; } = 30.0f;         // length units (σ or Å) per second
     public float FastMultiplier { get; set; } = 4.0f;
     public float MouseSensitivity { get; set; } = 0.0025f; // radians per pixel
 

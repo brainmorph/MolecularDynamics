@@ -1,0 +1,18 @@
+{
+  // SPC/Fw flexible water: 64 molecules (4 x 4 x 4 grid, random orientations) at 1 g/cm3, box 12.4 A.
+  // NVE, 0.5 fs timestep. Real units, with the unit in each key. There is no thermostat yet
+  // (WATER_PLAN.md W5): the grid start releases energy, so the water heats well above 300 K.
+  "system": "water",
+  "moleculesPerSide": 4,
+  "densityGramsPerCm3": 1.0,
+  "temperatureKelvin": 300,
+  "timestepFemtoseconds": 0.5,
+  "steps": 4000,
+  "seed": 12345,
+  "ljCutoffAngstrom": 6.0,
+  "ewaldCutoffAngstrom": 6.0,
+  "ewaldAccuracy": 1e-6,
+  "trajectoryEvery": 5,
+  "logEvery": 200,
+  "output": "../out/water-64.traj"
+}

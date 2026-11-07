@@ -81,6 +81,10 @@ public static class WaterBox
     /// <summary>
     /// n³ molecules with O atoms on a simple cubic grid, random orientations, equilibrium geometry.
     /// The cubic box side gives the requested mass density (g/cm³).
+    ///
+    /// Positions are returned unwrapped, with each molecule whole: O is inside the box and its H atoms
+    /// may stick out by up to one bond length. <see cref="ParticleSystem"/> wraps them and records the
+    /// image counts, so its unwrapped positions keep every molecule in one piece.
     /// </summary>
     public static (Box Box, Vec3[] Positions, Topology Topology) Cubic(int perSide, double densityGramsPerCm3, int seed)
     {
@@ -106,7 +110,7 @@ public static class WaterBox
                     do w = Vec3.Cross(u, RandomUnit(rng)); while (w.Length < 0.1);
                     w /= w.Length;
                     var g = SpcFw.EquilibriumGeometry(o, u, w);
-                    for (int k = 0; k < 3; k++) positions[3 * m + k] = box.Wrap(g[k], Int3.Zero).Position;
+                    for (int k = 0; k < 3; k++) positions[3 * m + k] = g[k];
                     m++;
                 }
         return (box, positions, topology);

@@ -4,7 +4,7 @@ This file plans the move from the LJ-only argon engine to a realistic liquid wat
 It follows the conventions in [PLAN.md](PLAN.md): each decision has a status (**Decided**,
 **Proposed**, or **Open**), and changes are dated.
 
-**Status: Decisions D1–D5 answered (2026-11-06). W0–W4 done (2026-11-06).** Next: W5 (Nosé–Hoover thermostat, then barostat).
+**Status: Decisions D1–D5 answered (2026-11-06). W0–W4 done, W7 done early (2026-11-06).** Next: W5 (Nosé–Hoover thermostat, then barostat).
 
 ---
 
@@ -203,6 +203,29 @@ Each milestone ends with tests that pass. Nothing moves on until the tests for t
 - Hydrogen bonds between molecules are a physical analysis. They are computed by the core and
   written to the output, not calculated in Godot (PLAN.md Section 11 rule).
 - **Tests:** the viewer reads the water trajectory bit-exactly (extend the conformance test).
+
+**Done (2026-11-06), moved ahead of W5 and W6 at the user's request, to view the water.**
+- CLI water mode: a settings file with `"system": "water"` runs SPC/Fw NVE (`WaterRunSettings`;
+  keys carry their unit: `temperatureKelvin`, `timestepFemtoseconds`, `ljCutoffAngstrom`, ...).
+  The log is in ps, kJ/mol and K. Example: `examples/water-64.json` (64 molecules, 12.4 Å box,
+  2 ps, about 48 s at 83 steps/s).
+- Format: a second `units` value `"real"` and the topology's bonds in every frame. Same layout, so
+  version 1 is kept (docs/trajectory-format.md, version history).
+- `WaterBox.Cubic` now returns each molecule whole (unwrapped); `ParticleSystem` wraps it and
+  records images. Wrapped positions and forces are unchanged.
+- Viewer: ball-and-stick for `"real"` files (O 0.36 Å, H 0.22 Å, sticks 0.09 Å, each half of a
+  bond in its atom's colour); units in the F1 panel from the header (ps, kJ/mol); camera speed
+  scaled to the box. Molecules are drawn whole: `DisplayLayout` wraps the lowest-index atom of each
+  bonded group into the box and places the others at the copy nearest their bonded partner
+  (display arithmetic on file values; bonds come from the file).
+- Tests (69/69 pass): the viewer reads a core-written water file exactly (units, scales, elements,
+  masses, bonds, positions); the layout draws every molecule whole, with O in the box and the drawn
+  O–H vector equal to the core's minimum-image vector, in a box where molecules straddle the edge;
+  unbonded atoms are drawn at exactly their wrapped positions.
+- Known display effect: playback blends linearly between stored frames, which can shorten a fast
+  O–H stretch on screen (period about 9 fs). `trajectoryEvery: 5` (2.5 fs) keeps it small.
+- Not done: hydrogen bonds (a core analysis, later). The example run is hot (about 770 K after the
+  grid start, no thermostat), so it shows a hot liquid, not room-temperature water, until W5.
 
 ---
 
